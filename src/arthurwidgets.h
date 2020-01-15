@@ -48,34 +48,71 @@
 **
 ****************************************************************************/
 
-#include "pathstroke.h"
+#ifndef ARTHURWIDGETS_H
+#define ARTHURWIDGETS_H
 
-#include <QApplication>
+#include "arthurstyle.h"
+#include <QBitmap>
+#include <QPushButton>
+#include <QGroupBox>
 
-int main(int argc, char **argv)
+QT_FORWARD_DECLARE_CLASS(QOpenGLWindow)
+QT_FORWARD_DECLARE_CLASS(QTextDocument)
+QT_FORWARD_DECLARE_CLASS(QTextEdit)
+QT_FORWARD_DECLARE_CLASS(QVBoxLayout)
+
+class ArthurFrame : public QWidget
+
 {
-    Q_INIT_RESOURCE(pathstroke);
+    Q_OBJECT
+public:
+    ArthurFrame(QWidget *parent);
+    virtual void paint(QPainter *) {}
 
-    QApplication app(argc, argv);
 
-    bool smallScreen = QApplication::arguments().contains("-small-screen");
+    void paintDescription(QPainter *p);
 
-    PathStrokeWidget pathStrokeWidget(smallScreen);
-    QStyle *arthurStyle = new ArthurStyle();
-    pathStrokeWidget.setStyle(arthurStyle);
-    QList<QWidget *> widgets = pathStrokeWidget.findChildren<QWidget *>();
-    foreach (QWidget *w, widgets) {
-        w->setStyle(arthurStyle);
-        w->setAttribute(Qt::WA_AcceptTouchEvents);
-    }
+    void loadDescription(const QString &filename);
+    void setDescription(const QString &htmlDesc);
 
-    if (smallScreen)
-        pathStrokeWidget.showFullScreen();
-    else
-        pathStrokeWidget.show();
+    void loadSourceFile(const QString &fileName);
 
-#ifdef QT_KEYPAD_NAVIGATION
-    QApplication::setNavigationMode(Qt::NavigationModeCursorAuto);
+    bool preferImage() const { return m_prefer_image; }
+#if QT_CONFIG(opengl)
+    QOpenGLWindow *glWindow() const { return m_glWindow; }
 #endif
-    return app.exec();
-}
+
+public slots:
+    void setPreferImage(bool pi) { m_prefer_image = pi; }
+    void setDescriptionEnabled(bool enabled);
+    void showSource();
+
+#if QT_CONFIG(opengl)
+    void enableOpenGL(bool use_opengl);
+    bool usesOpenGL() { return m_use_opengl; }
+#endif
+
+signals:
+    void descriptionEnabledChanged(bool);
+
+protected:
+    void paintEvent(QPaintEvent *) override;
+    void resizeEvent(QResizeEvent *) override;
+
+#if QT_CONFIG(opengl)
+    virtual void createGlWindow();
+    QOpenGLWindow *m_glWindow;
+    QWidget *m_glWidget;
+    bool m_use_opengl;
+#endif
+    QPixmap m_tile;
+
+    bool m_show_doc;
+    bool m_prefer_image;
+    QTextDocument *m_document;
+
+    QString m_sourceFileName;
+
+};
+
+#endif

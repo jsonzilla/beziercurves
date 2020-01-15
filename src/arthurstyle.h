@@ -48,34 +48,38 @@
 **
 ****************************************************************************/
 
-#include "pathstroke.h"
+#ifndef ARTHURSTYLE_H
+#define ARTHURSTYLE_H
 
-#include <QApplication>
+#include <QCommonStyle>
 
-int main(int argc, char **argv)
+QT_USE_NAMESPACE
+
+class ArthurStyle : public QCommonStyle
 {
-    Q_INIT_RESOURCE(pathstroke);
+public:
+    ArthurStyle();
 
-    QApplication app(argc, argv);
+    void drawHoverRect(QPainter *painter, const QRect &rect) const;
 
-    bool smallScreen = QApplication::arguments().contains("-small-screen");
+    void drawPrimitive(PrimitiveElement element, const QStyleOption *option,
+                       QPainter *painter, const QWidget *widget = 0) const override;
+    void drawControl(ControlElement element, const QStyleOption *option,
+                     QPainter *painter, const QWidget *widget) const override;
+    void drawComplexControl(ComplexControl control, const QStyleOptionComplex *option,
+                            QPainter *painter, const QWidget *widget) const override;
+    QSize sizeFromContents(ContentsType type, const QStyleOption *option,
+                           const QSize &size, const QWidget *widget) const override;
 
-    PathStrokeWidget pathStrokeWidget(smallScreen);
-    QStyle *arthurStyle = new ArthurStyle();
-    pathStrokeWidget.setStyle(arthurStyle);
-    QList<QWidget *> widgets = pathStrokeWidget.findChildren<QWidget *>();
-    foreach (QWidget *w, widgets) {
-        w->setStyle(arthurStyle);
-        w->setAttribute(Qt::WA_AcceptTouchEvents);
-    }
+    QRect subElementRect(SubElement element, const QStyleOption *option, const QWidget *widget) const override;
+    QRect subControlRect(ComplexControl cc, const QStyleOptionComplex *opt,
+                         SubControl sc, const QWidget *widget) const override;
 
-    if (smallScreen)
-        pathStrokeWidget.showFullScreen();
-    else
-        pathStrokeWidget.show();
+    int pixelMetric(PixelMetric metric, const QStyleOption *option, const QWidget *widget) const override;
 
-#ifdef QT_KEYPAD_NAVIGATION
-    QApplication::setNavigationMode(Qt::NavigationModeCursorAuto);
+    void polish(QPalette &palette) override;
+    void polish(QWidget *widget) override;
+    void unpolish(QWidget *widget) override;
+};
+
 #endif
-    return app.exec();
-}

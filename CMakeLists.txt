@@ -14,11 +14,28 @@ find_package(Qt5 COMPONENTS Widgets REQUIRED)
 
 get_target_property(QtCore_location Qt5::Core LOCATION)
 
-add_executable(simple_gui_template
-    mainwindow.ui
-    mainwindow.cpp
-    main.cpp
-    resources.qrc
+file(GLOB SOURCES
+    src/*.h
+    src/*.cpp
+    src/*.qrc
 )
+
+file(GLOB HEADERS
+    src/*.h
+)
+
+file(GLOB SRC
+    src/*.cpp
+)
+
+SET(TARGET_H
+    ${HEADERS}
+   )
+
+SET(TARGET_SRC
+    ${SRC}
+   )
+
+add_executable(simple_gui_template ${SOURCES})
 
 target_link_libraries(simple_gui_template Qt5::Widgets)
