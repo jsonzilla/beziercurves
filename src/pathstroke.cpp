@@ -1,413 +1,160 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the demonstration applications of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:BSD$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** BSD License Usage
-** Alternatively, you may use this file under the terms of the BSD license
-** as follows:
-**
-** "Redistribution and use in source and binary forms, with or without
-** modification, are permitted provided that the following conditions are
-** met:
-**   * Redistributions of source code must retain the above copyright
-**     notice, this list of conditions and the following disclaimer.
-**   * Redistributions in binary form must reproduce the above copyright
-**     notice, this list of conditions and the following disclaimer in
-**     the documentation and/or other materials provided with the
-**     distribution.
-**   * Neither the name of The Qt Company Ltd nor the names of its
-**     contributors may be used to endorse or promote products derived
-**     from this software without specific prior written permission.
-**
-**
-** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-** "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-** LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-** A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-** OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-** LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
-
 #include "arthurstyle.h"
 #include "arthurwidgets.h"
 #include "pathstroke.h"
 
 #include <stdio.h>
 
+namespace Curves {
+  class BezierCurve {
+  public:
+    std::vector<double> FactorialLookup;
+
+    BezierCurve()
+    {
+      CreateFactorialTable();
+    }
+
+    // just check if n is appropriate, then return the result
+    double factorial(int n)
+    {
+      if (n < 0) { throw "n is less than 0"; }
+      if (n > 32) { throw "n is greater than 32"; }
+
+      return FactorialLookup[n]; /* returns the value n! as a SUMORealing point number */
+    }
+
+    void CreateFactorialTable()
+    {
+      // fill untill n=32. The rest is too high to represent
+      std::vector<double> a(33);
+      a[0] = 1.0;
+      a[1] = 1.0;
+      a[2] = 2.0;
+      a[3] = 6.0;
+      a[4] = 24.0;
+      a[5] = 120.0;
+      a[6] = 720.0;
+      a[7] = 5040.0;
+      a[8] = 40320.0;
+      a[9] = 362880.0;
+      a[10] = 3628800.0;
+      a[11] = 39916800.0;
+      a[12] = 479001600.0;
+      a[13] = 6227020800.0;
+      a[14] = 87178291200.0;
+      a[15] = 1307674368000.0;
+      a[16] = 20922789888000.0;
+      a[17] = 355687428096000.0;
+      a[18] = 6402373705728000.0;
+      a[19] = 121645100408832000.0;
+      a[20] = 2432902008176640000.0;
+      a[21] = 51090942171709440000.0;
+      a[22] = 1124000727777607680000.0;
+      a[23] = 25852016738884976640000.0;
+      a[24] = 620448401733239439360000.0;
+      a[25] = 15511210043330985984000000.0;
+      a[26] = 403291461126605635584000000.0;
+      a[27] = 10888869450418352160768000000.0;
+      a[28] = 304888344611713860501504000000.0;
+      a[29] = 8841761993739701954543616000000.0;
+      a[30] = 265252859812191058636308480000000.0;
+      a[31] = 8222838654177922817725562880000000.0;
+      a[32] = 263130836933693530167218012160000000.0;
+      FactorialLookup = a;
+    }
+
+    double Ni(int n, int i)
+    {
+      double ni;
+      double a1 = factorial(n);
+      double a2 = factorial(i);
+      double a3 = factorial(n - i);
+      ni = a1 / (a2 * a3);
+      return ni;
+    }
+
+    // Calculate Bernstein basis
+    double Bernstein(int n, int i, double t)
+    {
+      double basis;
+      double ti; /* t^i */
+      double tni; /* (1 - t)^i */
+
+      /* Prevent problems with pow */
+
+      if (t == 0.0 && i == 0)
+        ti = 1.0;
+      else
+        ti = std::pow(t, i);
+
+      if (n == i && t == 1.0)
+        tni = 1.0;
+      else
+        tni = std::pow((1 - t), (n - i));
+
+      //Bernstein basis
+      basis = Ni(n, i) * ti * tni;
+      return basis;
+    }
+
+    void Bezier2D(std::vector<double> b, int cpts, std::vector<double> p)
+    {
+      size_t npts = b.size() / 2;
+      int icount, jcount;
+      double step, t;
+
+      // Calculate points on curve
+
+      icount = 0;
+      t = 0;
+      step = (double)1.0 / (cpts - 1u);
+
+      for (int i1 = 0; i1 != cpts; i1++)
+      {
+        if ((1.0 - t) < 5e-6)
+          t = 1.0;
+
+        jcount = 0;
+        p[icount] = 0.0;
+        p[icount + 1u] = 0.0;
+        for (int i = 0; i != npts; i++)
+        {
+          double basis = Bernstein(npts - 1, i, t);
+          p[icount] += basis * b[jcount];
+          p[icount + 1u] += basis * b[jcount + 1u];
+          jcount = jcount + 2;
+        }
+
+        icount += 2;
+        t += step;
+      }
+    }
+  };
+}
+
 extern void draw_round_rect(QPainter *p, const QRect &bounds, int radius);
 
-
-PathStrokeControls::PathStrokeControls(QWidget* parent, PathStrokeRenderer* renderer, bool smallScreen)
-      : QWidget(parent)
-{
-    m_renderer = renderer;
-
-    if (smallScreen)
-        layoutForSmallScreens();
-    else
-        layoutForDesktop();
-}
-
-void PathStrokeControls::createCommonControls(QWidget* parent)
-{
-    m_capGroup = new QGroupBox(parent);
-    m_capGroup->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
-    QRadioButton *flatCap = new QRadioButton(m_capGroup);
-    QRadioButton *squareCap = new QRadioButton(m_capGroup);
-    QRadioButton *roundCap = new QRadioButton(m_capGroup);
-    m_capGroup->setTitle(tr("Cap Style"));
-    flatCap->setText(tr("Flat"));
-    squareCap->setText(tr("Square"));
-    roundCap->setText(tr("Round"));
-    flatCap->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    squareCap->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    roundCap->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-    m_joinGroup = new QGroupBox(parent);
-    m_joinGroup->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
-    QRadioButton *bevelJoin = new QRadioButton(m_joinGroup);
-    QRadioButton *miterJoin = new QRadioButton(m_joinGroup);
-    QRadioButton *svgMiterJoin = new QRadioButton(m_joinGroup);
-    QRadioButton *roundJoin = new QRadioButton(m_joinGroup);
-    m_joinGroup->setTitle(tr("Join Style"));
-    bevelJoin->setText(tr("Bevel"));
-    miterJoin->setText(tr("Miter"));
-    svgMiterJoin->setText(tr("SvgMiter"));
-    roundJoin->setText(tr("Round"));
-
-    m_styleGroup = new QGroupBox(parent);
-    m_styleGroup->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
-    QRadioButton *solidLine = new QRadioButton(m_styleGroup);
-    QRadioButton *dashLine = new QRadioButton(m_styleGroup);
-    QRadioButton *dotLine = new QRadioButton(m_styleGroup);
-    QRadioButton *dashDotLine = new QRadioButton(m_styleGroup);
-    QRadioButton *dashDotDotLine = new QRadioButton(m_styleGroup);
-    QRadioButton *customDashLine = new QRadioButton(m_styleGroup);
-    m_styleGroup->setTitle(tr("Pen Style"));
-
-    QPixmap line_solid(":res/images/line_solid.png");
-    solidLine->setIcon(line_solid);
-    solidLine->setIconSize(line_solid.size());
-    QPixmap line_dashed(":res/images/line_dashed.png");
-    dashLine->setIcon(line_dashed);
-    dashLine->setIconSize(line_dashed.size());
-    QPixmap line_dotted(":res/images/line_dotted.png");
-    dotLine->setIcon(line_dotted);
-    dotLine->setIconSize(line_dotted.size());
-    QPixmap line_dash_dot(":res/images/line_dash_dot.png");
-    dashDotLine->setIcon(line_dash_dot);
-    dashDotLine->setIconSize(line_dash_dot.size());
-    QPixmap line_dash_dot_dot(":res/images/line_dash_dot_dot.png");
-    dashDotDotLine->setIcon(line_dash_dot_dot);
-    dashDotDotLine->setIconSize(line_dash_dot_dot.size());
-    customDashLine->setText(tr("Custom"));
-
-    int fixedHeight = bevelJoin->sizeHint().height();
-    solidLine->setFixedHeight(fixedHeight);
-    dashLine->setFixedHeight(fixedHeight);
-    dotLine->setFixedHeight(fixedHeight);
-    dashDotLine->setFixedHeight(fixedHeight);
-    dashDotDotLine->setFixedHeight(fixedHeight);
-
-    m_pathModeGroup = new QGroupBox(parent);
-    m_pathModeGroup->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
-    QRadioButton *curveMode = new QRadioButton(m_pathModeGroup);
-    QRadioButton *lineMode = new QRadioButton(m_pathModeGroup);
-    m_pathModeGroup->setTitle(tr("Line Style"));
-    curveMode->setText(tr("Curves"));
-    lineMode->setText(tr("Lines"));
-
-
-    // Layouts
-    QVBoxLayout *capGroupLayout = new QVBoxLayout(m_capGroup);
-    capGroupLayout->addWidget(flatCap);
-    capGroupLayout->addWidget(squareCap);
-    capGroupLayout->addWidget(roundCap);
-
-    QVBoxLayout *joinGroupLayout = new QVBoxLayout(m_joinGroup);
-    joinGroupLayout->addWidget(bevelJoin);
-    joinGroupLayout->addWidget(miterJoin);
-    joinGroupLayout->addWidget(svgMiterJoin);
-    joinGroupLayout->addWidget(roundJoin);
-
-    QVBoxLayout *styleGroupLayout = new QVBoxLayout(m_styleGroup);
-    styleGroupLayout->addWidget(solidLine);
-    styleGroupLayout->addWidget(dashLine);
-    styleGroupLayout->addWidget(dotLine);
-    styleGroupLayout->addWidget(dashDotLine);
-    styleGroupLayout->addWidget(dashDotDotLine);
-    styleGroupLayout->addWidget(customDashLine);
-
-    QVBoxLayout *pathModeGroupLayout = new QVBoxLayout(m_pathModeGroup);
-    pathModeGroupLayout->addWidget(curveMode);
-    pathModeGroupLayout->addWidget(lineMode);
-
-
-    // Connections
-    connect(flatCap, SIGNAL(clicked()), m_renderer, SLOT(setFlatCap()));
-    connect(squareCap, SIGNAL(clicked()), m_renderer, SLOT(setSquareCap()));
-    connect(roundCap, SIGNAL(clicked()), m_renderer, SLOT(setRoundCap()));
-
-    connect(bevelJoin, SIGNAL(clicked()), m_renderer, SLOT(setBevelJoin()));
-    connect(miterJoin, SIGNAL(clicked()), m_renderer, SLOT(setMiterJoin()));
-    connect(svgMiterJoin, SIGNAL(clicked()), m_renderer, SLOT(setSvgMiterJoin()));
-    connect(roundJoin, SIGNAL(clicked()), m_renderer, SLOT(setRoundJoin()));
-
-    connect(curveMode, SIGNAL(clicked()), m_renderer, SLOT(setCurveMode()));
-    connect(lineMode, SIGNAL(clicked()), m_renderer, SLOT(setLineMode()));
-
-    connect(solidLine, SIGNAL(clicked()), m_renderer, SLOT(setSolidLine()));
-    connect(dashLine, SIGNAL(clicked()), m_renderer, SLOT(setDashLine()));
-    connect(dotLine, SIGNAL(clicked()), m_renderer, SLOT(setDotLine()));
-    connect(dashDotLine, SIGNAL(clicked()), m_renderer, SLOT(setDashDotLine()));
-    connect(dashDotDotLine, SIGNAL(clicked()), m_renderer, SLOT(setDashDotDotLine()));
-    connect(customDashLine, SIGNAL(clicked()), m_renderer, SLOT(setCustomDashLine()));
-
-    // Set the defaults:
-    flatCap->setChecked(true);
-    bevelJoin->setChecked(true);
-    curveMode->setChecked(true);
-    solidLine->setChecked(true);
-}
-
-
-void PathStrokeControls::layoutForDesktop()
-{
-    QGroupBox *mainGroup = new QGroupBox(this);
-    mainGroup->setFixedWidth(180);
-    mainGroup->setTitle(tr("Path Stroking"));
-
-    createCommonControls(mainGroup);
-
-    QGroupBox* penWidthGroup = new QGroupBox(mainGroup);
-    QSlider *penWidth = new QSlider(Qt::Horizontal, penWidthGroup);
-    penWidth->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-    penWidthGroup->setTitle(tr("Pen Width"));
-    penWidth->setRange(0, 500);
-
-    QPushButton *animated = new QPushButton(mainGroup);
-    animated->setText(tr("Animate"));
-    animated->setCheckable(true);
-
-    QPushButton *showSourceButton = new QPushButton(mainGroup);
-    showSourceButton->setText(tr("Show Source"));
-#if QT_CONFIG(opengl)
-    QPushButton *enableOpenGLButton = new QPushButton(mainGroup);
-    enableOpenGLButton->setText(tr("Use OpenGL"));
-    enableOpenGLButton->setCheckable(true);
-    enableOpenGLButton->setChecked(m_renderer->usesOpenGL());
-#endif
-    QPushButton *whatsThisButton = new QPushButton(mainGroup);
-    whatsThisButton->setText(tr("What's This?"));
-    whatsThisButton->setCheckable(true);
-
-
-    // Layouts:
-    QVBoxLayout *penWidthLayout = new QVBoxLayout(penWidthGroup);
-    penWidthLayout->addWidget(penWidth);
-
-    QVBoxLayout * mainLayout = new QVBoxLayout(this);
-    mainLayout->setMargin(0);
-    mainLayout->addWidget(mainGroup);
-
-    QVBoxLayout *mainGroupLayout = new QVBoxLayout(mainGroup);
-    mainGroupLayout->setMargin(3);
-    mainGroupLayout->addWidget(m_capGroup);
-    mainGroupLayout->addWidget(m_joinGroup);
-    mainGroupLayout->addWidget(m_styleGroup);
-    mainGroupLayout->addWidget(penWidthGroup);
-    mainGroupLayout->addWidget(m_pathModeGroup);
-    mainGroupLayout->addWidget(animated);
-    mainGroupLayout->addStretch(1);
-    mainGroupLayout->addWidget(showSourceButton);
-#if QT_CONFIG(opengl)
-    mainGroupLayout->addWidget(enableOpenGLButton);
-#endif
-    mainGroupLayout->addWidget(whatsThisButton);
-
-
-    // Set up connections
-    connect(animated, SIGNAL(toggled(bool)), m_renderer, SLOT(setAnimation(bool)));
-
-    connect(penWidth, SIGNAL(valueChanged(int)), m_renderer, SLOT(setPenWidth(int)));
-
-    connect(showSourceButton, SIGNAL(clicked()), m_renderer, SLOT(showSource()));
-#if QT_CONFIG(opengl)
-    connect(enableOpenGLButton, SIGNAL(clicked(bool)), m_renderer, SLOT(enableOpenGL(bool)));
-#endif
-    connect(whatsThisButton, SIGNAL(clicked(bool)), m_renderer, SLOT(setDescriptionEnabled(bool)));
-    connect(m_renderer, SIGNAL(descriptionEnabledChanged(bool)),
-            whatsThisButton, SLOT(setChecked(bool)));
-
-
-    // Set the defaults
-    animated->setChecked(true);
-    penWidth->setValue(50);
-
-}
-
-void PathStrokeControls::layoutForSmallScreens()
-{
-    createCommonControls(this);
-
-    m_capGroup->layout()->setMargin(0);
-    m_joinGroup->layout()->setMargin(0);
-    m_styleGroup->layout()->setMargin(0);
-    m_pathModeGroup->layout()->setMargin(0);
-
-    QPushButton* okBtn = new QPushButton(tr("OK"), this);
-    okBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    okBtn->setMinimumSize(100,okBtn->minimumSize().height());
-
-    QPushButton* quitBtn = new QPushButton(tr("Quit"), this);
-    quitBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    quitBtn->setMinimumSize(100, okBtn->minimumSize().height());
-
-    QLabel *penWidthLabel = new QLabel(tr(" Width:"));
-    QSlider *penWidth = new QSlider(Qt::Horizontal, this);
-    penWidth->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-    penWidth->setRange(0, 500);
-
-#if QT_CONFIG(opengl)
-    QPushButton *enableOpenGLButton = new QPushButton(this);
-    enableOpenGLButton->setText(tr("Use OpenGL"));
-    enableOpenGLButton->setCheckable(true);
-    enableOpenGLButton->setChecked(m_renderer->usesOpenGL());
-#endif
-
-    // Layouts:
-    QHBoxLayout *penWidthLayout = new QHBoxLayout(0);
-    penWidthLayout->addWidget(penWidthLabel, 0, Qt::AlignRight);
-    penWidthLayout->addWidget(penWidth);
-
-    QVBoxLayout *leftLayout = new QVBoxLayout(0);
-    leftLayout->addWidget(m_capGroup);
-    leftLayout->addWidget(m_joinGroup);
-#if QT_CONFIG(opengl)
-    leftLayout->addWidget(enableOpenGLButton);
-#endif
-    leftLayout->addLayout(penWidthLayout);
-
-    QVBoxLayout *rightLayout = new QVBoxLayout(0);
-    rightLayout->addWidget(m_styleGroup);
-    rightLayout->addWidget(m_pathModeGroup);
-
-    QGridLayout *mainLayout = new QGridLayout(this);
-    mainLayout->setMargin(0);
-
-    // Add spacers around the form items so we don't look stupid at higher resolutions
-    mainLayout->addItem(new QSpacerItem(0,0), 0, 0, 1, 4);
-    mainLayout->addItem(new QSpacerItem(0,0), 1, 0, 2, 1);
-    mainLayout->addItem(new QSpacerItem(0,0), 1, 3, 2, 1);
-    mainLayout->addItem(new QSpacerItem(0,0), 3, 0, 1, 4);
-
-    mainLayout->addLayout(leftLayout, 1, 1);
-    mainLayout->addLayout(rightLayout, 1, 2);
-    mainLayout->addWidget(quitBtn, 2, 1, Qt::AlignHCenter | Qt::AlignTop);
-    mainLayout->addWidget(okBtn, 2, 2, Qt::AlignHCenter | Qt::AlignTop);
-
-#if QT_CONFIG(opengl)
-    connect(enableOpenGLButton, SIGNAL(clicked(bool)), m_renderer, SLOT(enableOpenGL(bool)));
-#endif
-
-    connect(penWidth, SIGNAL(valueChanged(int)), m_renderer, SLOT(setPenWidth(int)));
-    connect(quitBtn, SIGNAL(clicked()), this, SLOT(emitQuitSignal()));
-    connect(okBtn, SIGNAL(clicked()), this, SLOT(emitOkSignal()));
-
-    m_renderer->setAnimation(true);
-    penWidth->setValue(50);
-}
-
-void PathStrokeControls::emitQuitSignal()
-{
-    emit quitPressed();
-}
-
-void PathStrokeControls::emitOkSignal()
-{
-    emit okPressed();
-}
-
-
-PathStrokeWidget::PathStrokeWidget(bool smallScreen)
+PathStrokeWidget::PathStrokeWidget()
 {
     setWindowTitle(tr("Path Stroking"));
 
     // Widget construction and property setting
-    m_renderer = new PathStrokeRenderer(this, smallScreen);
-
-    m_controls = new PathStrokeControls(0, m_renderer, smallScreen);
+    m_renderer = new PathStrokeRenderer(this);
 
     // Layouting
     QHBoxLayout *viewLayout = new QHBoxLayout(this);
     viewLayout->addWidget(m_renderer);
-
-    if (!smallScreen)
-        viewLayout->addWidget(m_controls);
-
-    m_renderer->loadSourceFile(":res/pathstroke/pathstroke.cpp");
-    m_renderer->loadDescription(":res/pathstroke/pathstroke.html");
-
-    connect(m_renderer, SIGNAL(clicked()), this, SLOT(showControls()));
-    connect(m_controls, SIGNAL(okPressed()), this, SLOT(hideControls()));
-    connect(m_controls, SIGNAL(quitPressed()), QApplication::instance(), SLOT(quit()));
 }
 
-void PathStrokeWidget::showControls()
-{
-    m_controls->showFullScreen();
-}
-
-void PathStrokeWidget::hideControls()
-{
-    m_controls->hide();
-}
-
-void PathStrokeWidget::setStyle( QStyle * style )
-{
-    QWidget::setStyle(style);
-    if (m_controls != 0)
-    {
-        m_controls->setStyle(style);
-
-        QList<QWidget *> widgets = m_controls->findChildren<QWidget *>();
-        foreach (QWidget *w, widgets)
-            w->setStyle(style);
-    }
-}
-
-PathStrokeRenderer::PathStrokeRenderer(QWidget *parent, bool smallScreen)
+PathStrokeRenderer::PathStrokeRenderer(QWidget *parent)
     : ArthurFrame(parent)
 {
-    m_smallScreen = smallScreen;
     m_pointSize = 10;
     m_activePoint = -1;
     m_capStyle = Qt::FlatCap;
     m_joinStyle = Qt::BevelJoin;
-    m_pathMode = CurveMode;
     m_penWidth = 1;
     m_penStyle = Qt::SolidLine;
-    m_wasAnimated = true;
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     setAttribute(Qt::WA_AcceptTouchEvents);
 }
@@ -426,24 +173,20 @@ void PathStrokeRenderer::paint(QPainter *painter)
     QPainterPath path;
     path.moveTo(m_points.at(0));
 
-    if (m_pathMode == LineMode) {
-        for (int i=1; i<m_points.size(); ++i)
-            path.lineTo(m_points.at(i));
-    } else {
-        int i=1;
-        while (i + 2 < m_points.size()) {
-            path.cubicTo(m_points.at(i), m_points.at(i+1), m_points.at(i+2));
-            i += 3;
-        }
-        while (i < m_points.size()) {
-            path.lineTo(m_points.at(i));
-            ++i;
-        }
+    int i=1;
+    while (i + 2 < m_points.size()) {
+        path.cubicTo(m_points.at(i), m_points.at(i+1), m_points.at(i+2));
+        i += 3;
     }
+    while (i < m_points.size()) {
+        path.lineTo(m_points.at(i));
+        ++i;
+    }
+
 
     // Draw the path
     {
-        QColor lg = Qt::red;
+        QColor lg = Qt::blue;
 
         // The "custom" pen
         if (m_penStyle == Qt::NoPen) {
@@ -484,7 +227,6 @@ void PathStrokeRenderer::paint(QPainter *painter)
         painter->setBrush(Qt::NoBrush);
         painter->drawPolyline(m_points);
     }
-
 }
 
 void PathStrokeRenderer::initializePoints()
@@ -537,7 +279,6 @@ void PathStrokeRenderer::mousePressEvent(QMouseEvent *e)
 {
     if (!m_fingerPointMapping.isEmpty())
         return;
-    setDescriptionEnabled(false);
     m_activePoint = -1;
     qreal distance = -1;
     for (int i=0; i<m_points.size(); ++i) {
@@ -549,13 +290,11 @@ void PathStrokeRenderer::mousePressEvent(QMouseEvent *e)
     }
 
     if (m_activePoint != -1) {
-        m_wasAnimated = m_timer.isActive();
-        setAnimation(false);
         mouseMoveEvent(e);
     }
 
     // If we're not running in small screen mode, always assume we're dragging
-    m_mouseDrag = !m_smallScreen;
+    m_mouseDrag = true;
     m_mousePress = e->pos();
 }
 
@@ -578,20 +317,9 @@ void PathStrokeRenderer::mouseReleaseEvent(QMouseEvent *)
     if (!m_fingerPointMapping.isEmpty())
         return;
     m_activePoint = -1;
-    setAnimation(m_wasAnimated);
 
-    if (!m_mouseDrag && m_smallScreen)
+    if (!m_mouseDrag)
         emit clicked();
-}
-
-void PathStrokeRenderer::timerEvent(QTimerEvent *e)
-{
-    if (e->timerId() == m_timer.timerId()) {
-        updatePoints();
-    } // else if (e->timerId() == m_fpsTimer.timerId()) {
-//         emit frameRate(m_frameCount);
-//         m_frameCount = 0;
-//     }
 }
 
 bool PathStrokeRenderer::event(QEvent *e)
@@ -655,10 +383,6 @@ bool PathStrokeRenderer::event(QEvent *e)
             e->ignore();
             return false;
         } else {
-            if (touchBegin) {
-                m_wasAnimated = m_timer.isActive();
-                setAnimation(false);
-            }
             update();
             return true;
         }
@@ -670,23 +394,10 @@ bool PathStrokeRenderer::event(QEvent *e)
             return false;
         }
         m_fingerPointMapping.clear();
-        setAnimation(m_wasAnimated);
         return true;
         break;
     default:
         break;
     }
     return QWidget::event(e);
-}
-
-void PathStrokeRenderer::setAnimation(bool animation)
-{
-    m_timer.stop();
-//     m_fpsTimer.stop();
-
-    if (animation) {
-        m_timer.start(25, this);
-//         m_fpsTimer.start(1000, this);
-//         m_frameCount = 0;
-    }
 }
